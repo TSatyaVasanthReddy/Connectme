@@ -44,6 +44,7 @@ public class MapsActivity extends FragmentActivity {
     SharedPreferences sharedpreferences;
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
     int x=0;
+    int y;
     private LatLng mypos;
     private int colind=0;
     private  Map<String, Marker> cur_markers = new ConcurrentHashMap<String, Marker>();
