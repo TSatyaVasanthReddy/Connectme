@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent" android:layout_height="fill_parent"
+    android:orientation="vertical"
+
+    >
+    <ScrollView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            >
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="60dp"
+                android:text="Vasanth0"
+                android:textSize="24dp"
+                android:paddingLeft="10dp"
+
+                />
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="60dp"
+                android:text="@string/temp"
+                android:textSize="24sp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bordershape"
+                />
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="60dp"
+                android:text="@string/temp"
+                android:textSize="24sp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bordershape"
+                />
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="60dp"
+                android:text="@string/temp"
+                android:textSize="24sp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bordershape"
+                />
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="60dp"
+                android:text="@string/temp"
+                android:textSize="24sp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bordershape"
+                />
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="60dp"
+                android:text="@string/temp"
+                android:textSize="24sp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bordershape"
+                />
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="60dp"
+                android:text="@string/temp"
+                android:textSize="24sp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bordershape"
+                />
+            <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="60dp"
+                android:text="@string/temp"
+                android:textSize="24sp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bordershape"
+                />
+
+
+
+        </LinearLayout>
+    </ScrollView>
+
+    <RelativeLayout
+        android:layout_width="fill_parent"
+        android:layout_height="60dp"
+        android:layout_alignParentTop="true"
+        android:layout_weight="1"
+        android:background="#56AAFF"
+        >
+
+        <Switch
+            android:layout_width="200dp"
+            android:layout_height="55dp"
+            android:text="Be Visible"
+            android:paddingRight="30dp"
+            android:paddingLeft="10dp"
+            android:id="@+id/switchon"
+            android:layout_alignParentLeft="true"
+            android:layout_gravity="top"
+            android:textSize="24dp"
+            />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="55dp"
+            android:text="View friends"
+            android:id="@+id/button"
+            android:layout_alignBottom="@+id/switchon"
+            android:layout_alignParentEnd="true" />
+
+    </RelativeLayout>
+
+</RelativeLayout>
