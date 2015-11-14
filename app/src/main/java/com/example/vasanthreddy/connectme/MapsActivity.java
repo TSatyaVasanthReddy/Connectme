@@ -1,30 +1,26 @@
 package com.example.vasanthreddy.connectme;
 
-import android.support.v4.app.FragmentActivity;
-import android.os.Bundle;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.FragmentActivity;
-import android.view.Menu;
-import android.widget.TextView;
-import com.facebook.*;
-import android.content.*;
-import com.example.vasanthreddy.connectme.UserData;
-import android.util.*;
+import android.util.Log;
 import android.widget.Toast;
 
-import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.*;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.CameraUpdateFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -53,6 +49,7 @@ public class MapsActivity extends FragmentActivity {
     private  BitmapDescriptor[] markcol;
     Marker marker;
     String UID;
+    String name;
     @Override
     protected void onCreate(Bundle savedInstanceState)  {
         super.onCreate(savedInstanceState);
@@ -77,21 +74,7 @@ public class MapsActivity extends FragmentActivity {
         setUpMapIfNeeded();
     }
 
-    /**
-     * Sets up the map if it is possible to do so (i.e., the Google Play services APK is correctly
-     * installed) and the map has not already been instantiated.. This will ensure that we only ever
-     * call {@link #setUpMap()} once when {@link #mMap} is not null.
-     * <p/>
-     * If it isn't installed {@link SupportMapFragment} (and
-     * {@link com.google.android.gms.maps.MapView MapView}) will show a prompt for the user to
-     * install/update the Google Play services APK on their device.
-     * <p/>
-     * A user can return to this FragmentActivity after following the prompt and correctly
-     * installing/updating/enabling the Google Play services. Since the FragmentActivity may not
-     * have been completely destroyed during this process (it is likely that it would only be
-     * stopped or paused), {@link #onCreate(Bundle)} may not be called again so we should call this
-     * method in {@link #onResume()} to guarantee that it will be called.
-     */
+
     private void setUpMapIfNeeded() {
         // Do a null check to confirm that we have not already instantiated the map.
         if (mMap == null) {
@@ -105,12 +88,7 @@ public class MapsActivity extends FragmentActivity {
         }
     }
 
-    /**
-     * This is where we can add markers or lines, add listeners or move the camera. In this case, we
-     * just add a marker near Africa.
-     * <p/>
-     * This should only be called once and when we are sure that {@link #mMap} is not null.
-     */
+
     public Location getLastKnownLocation() {
         LocationManager mLocationManager=(LocationManager) getSystemService(Context.LOCATION_SERVICE);
         List<String> providers = mLocationManager.getProviders(true);
@@ -133,36 +111,18 @@ public class MapsActivity extends FragmentActivity {
         }
         return bestLocation;
     }
-    public String getbestLocationProvider() {
-        LocationManager mLocationManager=(LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        List<String> providers = mLocationManager.getProviders(true);
-        Location bestLocation = null;
-        String bestprovider=null;
-        for (String provider : providers) {
-            Location l = mLocationManager.getLastKnownLocation(provider);
-            //Log.d("last known location, provider: %s, location: ", provider);
 
-            if (l == null) {
-                continue;
-            }
-            if (bestLocation == null
-                    || l.getAccuracy() < bestLocation.getAccuracy()) {
-                //  Log.d("found best last known location: ","n ");
-                bestLocation = l;
-                bestprovider=provider;
-            }
-        }
-        if (bestLocation == null) {
-            return null;
-        }
-        return bestprovider;
-    }
     private void setUpMap() {
+        sharedpreferences= PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        UID=sharedpreferences.getString("UID",null);
+        name=sharedpreferences.getString("name",null);
 
         mMap.setMyLocationEnabled(true);
         LocationManager lmanage=(LocationManager) getSystemService(Context.LOCATION_SERVICE);
         Criteria criteria = new Criteria();
         String provider = lmanage.getBestProvider(criteria, true);
+        Thread t=new Thread(new communicate("192.168.12.12",2341));
+        t.start();
         lmanage.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
@@ -178,6 +138,7 @@ public class MapsActivity extends FragmentActivity {
                     marker.setPosition(mypos);
                 }
             }
+
             @Override
             public void onProviderDisabled(String provider) {
                 // TODO Auto-generated method stub
@@ -195,23 +156,20 @@ public class MapsActivity extends FragmentActivity {
         });
 
     }
-    public void sendLocation()
-    {
-        sharedpreferences=getSharedPreferences("my_pref",Context.MODE_PRIVATE);
-        UID=sharedpreferences.getString("UID",null);
-
-    }
     public void updateHash()
     {
         new_markers=new ConcurrentHashMap<>();
         for(String uid :servHash.keySet())
         {
             UserData ud=servHash.get(uid);
-            LatLng pos=new LatLng(ud.lat,ud.lng);
-            MarkerOptions mop=new MarkerOptions()
-                    .position(pos).title(ud.name)
-                    .icon(markcol[getColid(uid)]);
-            new_markers.put(uid,mop);
+            if(ud.isalive) {
+                LatLng pos = new LatLng(ud.lat, ud.lng);
+                MarkerOptions mop = new MarkerOptions()
+                        .position(pos).title(ud.name)
+                        .icon(markcol[getColid(uid)])
+                        .title(name);
+                new_markers.put(uid, mop);
+            }
 
         }
 
@@ -225,7 +183,8 @@ public class MapsActivity extends FragmentActivity {
                 if (cur_markers.containsKey(uid)) {
                     LatLng newpos = new_markers.get(uid).getPosition();
                     cur_markers.get(uid).setPosition(newpos);
-                } else {
+                }
+                else {
                     Marker nm = mMap.addMarker(new_markers.get(uid));
                     cur_markers.put(uid, nm);
                 }
@@ -235,7 +194,8 @@ public class MapsActivity extends FragmentActivity {
         {
             if(!new_markers.containsKey(uid))
             {
-                cur_markers.get(uid).setVisible(false);
+                cur_markers.get(uid).remove();
+                cur_markers.remove(uid);
             }
         }
 
@@ -248,11 +208,9 @@ public class MapsActivity extends FragmentActivity {
         return  sum%9;
 
     }
-    public void del_marker(String UID)
-    {
 
-    }
-    public class communicate implements Runnable{
+    public class communicate implements Runnable
+    {
 
         InetAddress ip;
         int port;
@@ -305,7 +263,7 @@ public class MapsActivity extends FragmentActivity {
             sock=x;
         }
         public void run() {
-            UserData ud=new UserData(mypos.latitude,mypos.longitude,"name",UID,System.currentTimeMillis()/1000,true);
+            UserData ud=new UserData(mypos.latitude,mypos.longitude,name,UID,System.currentTimeMillis()/1000,true);
             OutputStream oStream;
             try {
                 oStream = sock.getOutputStream();
@@ -318,4 +276,5 @@ public class MapsActivity extends FragmentActivity {
             }
          }
     }
+
 }

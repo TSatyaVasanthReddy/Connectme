@@ -1,7 +1,5 @@
 package com.example.vasanthreddy.connectme;
 
-import com.google.android.gms.maps.model.LatLng;
-
 /**
  * Created by vasanthreddy on 13/11/15.
  */
