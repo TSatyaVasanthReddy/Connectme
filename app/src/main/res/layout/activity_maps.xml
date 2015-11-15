@@ -3,14 +3,45 @@
     android:layout_weight="100"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#4984F2"
+    android:orientation="vertical"
+
     >
 <fragment xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
+    android:layout_marginLeft="10dp"
+    android:layout_marginRight="10dp"
     android:layout_marginTop="30dp"
-    android:layout_height="350dp"
+    android:layout_height="320dp"
+    android:layout_marginBottom="10dp"
     android:id="@+id/map"
     tools:context=".MapsActivity"
     android:name="com.google.android.gms.maps.SupportMapFragment"
     />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="30dp"
+        android:background="#ff1057ff"
+        android:text="PEERS"
+        android:textSize="20dp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:textColor="#ff010101" />
+    <ScrollView
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:background="#ff2e557a"
+        android:fillViewport="true"
+        android:id="@+id/scrview">
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:orientation="vertical"
+            android:id="@+id/lin_sc"
+            >
+
+
+        </LinearLayout>
+    </ScrollView>
 </LinearLayout>

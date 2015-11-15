@@ -8,9 +8,10 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Looper;
-import android.preference.PreferenceManager;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -28,7 +29,6 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -42,18 +42,20 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class MapsActivity extends FragmentActivity {
     SharedPreferences sharedpreferences;
-    private GoogleMap mMap; // Might be null if Google Play services APK is not available.
+    static GoogleMap mMap; // Might be null if Google Play services APK is not available.
     int x=0;
     int y;
-    private LatLng mypos;
+    static private LatLng mypos;
     private int colind=0;
-    private  Map<String, Marker> cur_markers = new ConcurrentHashMap<String, Marker>();
-    private  Map<String, MarkerOptions> new_markers = new ConcurrentHashMap<String, MarkerOptions>();
-    private  Map<String , UserData> servHash=new ConcurrentHashMap<String, UserData>();
-    private  BitmapDescriptor[] markcol;
-    Marker marker;
-    String UID;
-    String name;
+    static LinearLayout l;
+    static LinearLayout.LayoutParams lp;
+    static  Map<String, Marker> cur_markers ;
+    static  Map<String, LinkedList> new_markers;
+    static  Map<String , LinkedList> servHash;
+    static private  BitmapDescriptor[] markcol;
+    static Marker marker;
+    static String UID;
+    static String name;
     @Override
     protected void onCreate(Bundle savedInstanceState)  {
         super.onCreate(savedInstanceState);
@@ -93,53 +95,45 @@ public class MapsActivity extends FragmentActivity {
     }
 
 
-    public Location getLastKnownLocation() {
-        LocationManager mLocationManager=(LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        List<String> providers = mLocationManager.getProviders(true);
-        Location bestLocation = null;
-        for (String provider : providers) {
-            Location l = mLocationManager.getLastKnownLocation(provider);
-            //Log.d("last known location, provider: %s, location: ", provider);
-
-            if (l == null) {
-                continue;
-            }
-            if (bestLocation == null
-                    || l.getAccuracy() < bestLocation.getAccuracy()) {
-              //  Log.d("found best last known location: ","n ");
-                bestLocation = l;
-            }
-        }
-        if (bestLocation == null) {
-            return null;
-        }
-        return bestLocation;
-    }
 
     private void setUpMap() {
-        sharedpreferences= PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-        UID=sharedpreferences.getString("UID", null);
-        name=sharedpreferences.getString("name",null);
+        sharedpreferences= getSharedPreferences("my_pref", MODE_PRIVATE);
+       // UID=sharedpreferences.getString("UID", "123456");
+        UID="Tej";
+
+        l=(LinearLayout)findViewById(R.id.lin_sc);
+        servHash=new HashMap<String, LinkedList>();
+        new_markers = new HashMap<String,LinkedList>();
+        cur_markers = new HashMap<String, Marker>();
+        lp=new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,LinearLayout.LayoutParams.WRAP_CONTENT);
+        name="Tej";
+       // name=sharedpreferences.getString("name","vasanth");
         mypos=new LatLng(0,0);
         mMap.setMyLocationEnabled(true);
         LocationManager lmanage=(LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
         Criteria criteria = new Criteria();
         String provider = lmanage.getBestProvider(criteria, true);
-        Log.e("Test","Test logline") ;
-        Thread t=new Thread(new communicate("172.16.11.241",8080));
+        Log.e("Test", "Test logline") ;
+        Thread t=new Thread(new communicate("172.16.4.19",8080));
         t.start();
-        lmanage.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, new LocationListener() {
+        //Timer t2=new Timer();
+        //t2.schedule(new MarkUpdate(),5000,5000);
+        Log.d("TTTTTT", "THANK GODD");
+        lmanage.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, new LocationListener()
+        {
             @Override
             public void onLocationChanged(Location location) {
                 // TODO Auto-generated method stub
+                updatemarkers();
                 mypos = new LatLng(location.getLatitude(), location.getLongitude());
-               // Toast.makeText(MapsActivity.this, "Your Location changed to ("+mypos.latitude+","+mypos.longitude+")", Toast.LENGTH_LONG).show();
+                Toast.makeText(MapsActivity.this, "Your Location changed to (" + mypos.latitude + "," + mypos.longitude + ")", Toast.LENGTH_LONG).show();
                 mMap.moveCamera(CameraUpdateFactory.newLatLng(mypos));
-                mMap.animateCamera(CameraUpdateFactory.zoomTo(10));
-                if(x==0){
-                marker=mMap.addMarker(new MarkerOptions().position(mypos).title("My updated Location"));
-                x++;}
-                else {
+
+                if (x == 0) {
+                    marker = mMap.addMarker(new MarkerOptions().position(mypos).title("My updated Location"));
+                    x++;
+                } else {
                     marker.setPosition(mypos);
                 }
             }
@@ -148,11 +142,13 @@ public class MapsActivity extends FragmentActivity {
             public void onProviderDisabled(String provider) {
                 // TODO Auto-generated method stub
             }
+
             @Override
             public void onProviderEnabled(String provider) {
                 // TODO Auto-generated method stub
                 Log.d("gfghgjgjgjgj ", provider + " provider enabled");
             }
+
             @Override
             public void onStatusChanged(String provider, int status,
                                         Bundle extras) {
@@ -160,90 +156,73 @@ public class MapsActivity extends FragmentActivity {
             }
         });
 
-    }
-    public void updateHash()
-    {
-        new_markers=new ConcurrentHashMap<>();
-        for(String uid :servHash.keySet())
-        {
-            UserData ud=servHash.get(uid);
-            if(ud.isalive)
-            {
-                LatLng pos = new LatLng(ud.lat, ud.lng);
-                MarkerOptions mop = new MarkerOptions()
-                        .position(pos).title(ud.name)
-                        .icon(markcol[getColid(uid)])
-                        .title(name);
-                new_markers.put(uid, mop);
-            }
-
-        }
+        Log.d("TTTTTT","THANK GODD");
 
     }
-
     public void updatemarkers()
     {
-        for(String uid :new_markers.keySet())
-        {
-            if(!uid.equals(UID)) {
+        Log.e("SERVHASH","UPDATING MARKERS");
+        for (String uid : new_markers.keySet()) {
+            Log.e("Markers", "UID:" + uid);
+            if (!uid.equals(UID)) {
+                LinkedList ud = new_markers.get(uid);
+                LatLng pos = new LatLng((double) ud.get(2), (double) ud.get(3));
+                MarkerOptions m = new MarkerOptions().title((String) ud.get(0))
+                        .position(pos)
+                        .icon(markcol[getColid((String) ud.get(1))]);
+                Log.e("Markers", "Created new options");
+
+                if (m == null)
+                    Log.d("Markers", "Null Marker");
+                else
+                    Log.d("Markers", "Title:" + m.getTitle() + ";Lat:" + m.getPosition().latitude + ";Long:" + m.getPosition().longitude);
+
                 if (cur_markers.containsKey(uid)) {
-                    LatLng newpos = new_markers.get(uid).getPosition();
-                    cur_markers.get(uid).setPosition(newpos);
-                }
-                else {
-                    Marker nm = mMap.addMarker(new_markers.get(uid));
+                    Log.d("Markers", "Already Here.So update marker");
+                    cur_markers.get(uid).setPosition(pos);
+                } else {
+                    Log.d("Markers", "Adding new Marker");
+
+                    Marker nm = mMap.addMarker(new MarkerOptions().title((String) ud.get(0))
+                                    .position(pos)
+                    );
                     cur_markers.put(uid, nm);
                 }
+            } else {
+                Log.e("Markers", "Thats me");
             }
         }
-        for(String uid:cur_markers.keySet())
-        {
-            if(!new_markers.containsKey(uid))
-            {
+        for (String uid : cur_markers.keySet()) {
+            if (!new_markers.containsKey(uid)) {
                 cur_markers.get(uid).remove();
                 cur_markers.remove(uid);
             }
         }
+    }
+    public void updateHash()
+    {
+        Log.e("SERVHASH","UPDATING HASH");
+        for (String uid:servHash.keySet())
+        {
+            Log.e("SERVHASH","ID"+servHash.get(uid).get(0)+";location lat="+servHash.get(uid).get(2));
+        }
+        new_markers=new HashMap<String,LinkedList>();
+        for(String uid :servHash.keySet())
+        {
+            LinkedList ud=servHash.get(uid);
+            if((boolean)ud.get(5))
+            {
+                Log.e("SERVHASH",servHash.get(uid).get(0)+" ALIVE");
+                LatLng pos = new LatLng((double)ud.get(2),(double) ud.get(3));
+
+                new_markers.put(uid,ud);
+            }
+            else
+                Log.e("SERVHASH",servHash.get(uid).get(0)+"DEAD");
+        }
 
     }
 
-    public static class ServData implements Serializable{
-        public ServData(HashMap<String ,UserData> x)
-        {
-            System.out.println("Created object");
-            hashlist=x;
-            unixTime = System.currentTimeMillis() / 1000L;
-        }
-        long unixTime;
-        Map<String ,UserData> hashlist;
-    }
-
-    public class UserData implements Serializable {
-
-        public UserData()
-        {
-            lat=0;
-            lng=0;
-            uid=null;
-            isalive=false;
-        }
-        public UserData(double lat , double lng , String uid , String name , long Unixtime , boolean isalive)
-        {
-            this.lat = lat;
-            this.lng = lng;
-            this.uid = uid;
-            this.name = name;
-            this.Unixtime = Unixtime;
-            this.isalive = isalive;
-        }
-
-        public double lat;
-        public double lng;
-        public String uid;
-        public String name;
-        public long Unixtime;
-        public boolean isalive;
-    }
 
     public int getColid(String x)
     {
@@ -288,31 +267,42 @@ public class MapsActivity extends FragmentActivity {
             while(i-->0)
             {
                 InputStream iStream;
-                try {
-                    if(client!=null)
+                ObjectInputStream oiStream;
+                if(client!=null)
                     {
-                        Log.e("Hey","Still waiting") ;
-                        Log.e("client","client ip "+client.getInetAddress().toString());
-                        iStream = client.getInputStream();
-                    ObjectInputStream oiStream = new ObjectInputStream(iStream);
+                        Log.e("Hey", "Still waiting") ;
+                        Log.e("client", "client ip " + client.getInetAddress().toString());
+                        try {
+                            iStream = client.getInputStream();
+                            oiStream= new ObjectInputStream(iStream);
+                            try {
 
-                    servHash=(HashMap<String,UserData>)oiStream.readObject();
-                    updateHash();
-                    updatemarkers();
-                    System.out.println( "Got from server***************");
+                                if(oiStream==null)
+                                    Log.e("oistream","null") ;
+                                else {
+                                    servHash = (HashMap<String, LinkedList>) oiStream.readObject();
+                                    updateHash();
+                                    //updatemarkers();
+                                    System.out.println( "Got from server***************");
 
-                    Log.e("Hey","Got msg from server") ;
-                    }
+                                }
+                            } catch (ClassNotFoundException e) {
+                                Log.e("CnotF","Exception") ;
+                                e.printStackTrace();
+                            }
+
+                        } catch (IOException e) {
+                            Log.e("IOE","IO exception ") ;
+                            e.printStackTrace();
+                        }
+
+}
                     else
                     {
                         Log.e("err","failed failed");
                     }
 
-                } catch (Exception e)
-                {
-                    Log.e("Hey","Exception found vasanth");
-                    Log.e("Exc", e.toString());
-                }
+
             }
 
         }

@@ -6,161 +6,141 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
-import android.app.Fragment;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Base64;
 import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Toast;
 
-import com.facebook.AccessToken;
-import com.facebook.AccessTokenTracker;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
-import com.facebook.Profile;
-import com.facebook.ProfileTracker;
+import com.facebook.GraphRequest;
+import com.facebook.GraphResponse;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 
-public class FbloginActivity extends Fragment
-{
+public class FbloginActivity extends ActionBarActivity {
 
-
+    public static final String Pname = "my_pref";
+    SharedPreferences pref;
     private CallbackManager callbackManager;
-    private TextView textView;
-    public SharedPreferences spref;
-    private AccessTokenTracker accessTokenTracker;
-    private ProfileTracker profileTracker;
+    private LoginButton fbLoginButton;
 
-    private FacebookCallback<LoginResult> callback = new FacebookCallback<LoginResult>() {
-        @Override
-        public void onSuccess(LoginResult loginResult) {
-            AccessToken accessToken = loginResult.getAccessToken();
-            Profile profile = Profile.getCurrentProfile();
-            spref= PreferenceManager.getDefaultSharedPreferences(getActivity());
-            spref=getActivity().getPreferences(0);
-            SharedPreferences.Editor editor = spref.edit();
-            editor.putString("UID", profile.getId());
-            editor.putString("name",profile.getFirstName());
-            editor.commit();
-            Intent f = new Intent(getActivity(), MapsActivity.class);
-            startActivity(f);
-
-            displayMessage(profile);
-        }
-
-        @Override
-        public void onCancel() {
-
-        }
-
-        @Override
-        public void onError(FacebookException e) {
-
-        }
-    };
-
-    public FbloginActivity() {
-
-    }
-
-
-    @Override
-   public void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-    }
-
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        FacebookSdk.sdkInitialize(this.getActivity().getApplicationContext());
-
+        FacebookSdk.sdkInitialize(getApplicationContext());
         callbackManager = CallbackManager.Factory.create();
         getFbKeyHash("com.example.vasanthreddy.connectme");
-        accessTokenTracker = new AccessTokenTracker() {
+        setContentView(R.layout.fbloginact);
+        fbLoginButton = (LoginButton)findViewById(R.id.fb_login_button);
+        fbLoginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
             @Override
-            protected void onCurrentAccessTokenChanged(AccessToken oldToken, AccessToken newToken)
-            {
+            public void onSuccess(LoginResult loginResult) {
 
+
+                GraphRequest.newMeRequest(
+                        loginResult.getAccessToken(), new GraphRequest.GraphJSONObjectCallback() {
+                            @Override
+                            public void onCompleted(JSONObject json, GraphResponse response) {
+                                if (response.getError() != null) {
+                                    // handle error
+                                    System.out.println("ERROR");
+                                } else {
+                                    System.out.println("Success");
+                                    try {
+
+
+                                        String str_email = json.getString("email");
+                                        String str_id = json.getString("id");
+                                        String str_firstname = json.getString("first_name");
+                                        String str_lastname = json.getString("last_name");
+                                        pref=getApplicationContext().getSharedPreferences(Pname, MODE_PRIVATE);
+                                        SharedPreferences.Editor editor = pref.edit();
+                                        editor.putString("UID", str_id);
+                                        editor.putString("name",str_firstname);
+                                        editor.commit();
+
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }
+
+                        }).executeAsync();
+
+
+
+                System.out.println("Facebook Login Successful!");
+                System.out.println("Logged in user Details : ");
+                System.out.println("--------------------------");
+                System.out.println("User ID  : " + loginResult.getAccessToken().getUserId());
+                System.out.println("Authentication Token : " + loginResult.getAccessToken().getToken());
+                Toast.makeText(FbloginActivity.this, "Login Successful!" + " User ID  : " + loginResult.getAccessToken().getUserId(), Toast.LENGTH_LONG).show();
+
+                Intent f = new Intent(FbloginActivity.this, MapsActivity.class);
+                startActivity(f);
+                finish();
+                //
+            }
+
+            @Override
+            public void onCancel() {
+                Toast.makeText(FbloginActivity.this, "Login cancelled by user!", Toast.LENGTH_LONG).show();
+                System.out.println("Facebook Login failed!!");
 
             }
-        };
 
-        profileTracker = new ProfileTracker() {
             @Override
-            protected void onCurrentProfileChanged(Profile oldProfile, Profile newProfile)
-            {
-                displayMessage(newProfile);
+            public void onError(FacebookException e) {
+                Toast.makeText(FbloginActivity.this, "Login unsuccessful!", Toast.LENGTH_LONG).show();
+                System.out.println("Facebook Login failed!!");
+                e.printStackTrace();
             }
-        };
-
-        accessTokenTracker.startTracking();
-        profileTracker.startTracking();
-
-        return inflater.inflate(R.layout.fbloginact, container, false);
+        });
     }
 
     @Override
-    public void onViewCreated(View view, Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        LoginButton loginButton = (LoginButton) view.findViewById(R.id.fb_login_button);
-        textView = (TextView) view.findViewById(R.id.textView);
-        //loginButton.setFragment();
-        loginButton.registerCallback(callbackManager, callback);
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_fblogin, menu);
 
+        return true;
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        callbackManager.onActivityResult(requestCode, resultCode, data);
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
 
-    }
-
-    private void displayMessage(Profile profile){
-        if(profile != null){
-            textView.setText(profile.getName());
-
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
         }
-    }
 
-    @Override
-    public void onStop() {
-        super.onStop();
-        accessTokenTracker.stopTracking();
-        profileTracker.stopTracking();
+        return super.onOptionsItemSelected(item);
     }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        Profile profile = Profile.getCurrentProfile();
-        Intent f = new Intent(this.getActivity(), MapsActivity.class);
-        startActivity(f);
-        displayMessage(profile);
-    }
-
     public void getFbKeyHash(String packageName) {
 
         try {
-            PackageInfo info =this.getActivity().getPackageManager().getPackageInfo(
+            PackageInfo info = getPackageManager().getPackageInfo(
                     packageName,
                     PackageManager.GET_SIGNATURES);
             for (Signature signature : info.signatures) {
                 MessageDigest md = MessageDigest.getInstance("SHA");
                 md.update(signature.toByteArray());
-                Toast.makeText(this.getActivity(), "My hash key " + Base64.encodeToString(md.digest(), Base64.DEFAULT), Toast.LENGTH_LONG).show();
+                Toast.makeText(FbloginActivity.this, "My hash key "+Base64.encodeToString(md.digest(), Base64.DEFAULT), Toast.LENGTH_LONG).show();
                 Log.d("YourKeyHash :", Base64.encodeToString(md.digest(), Base64.DEFAULT));
                 System.out.println("YourKeyHash: "+ Base64.encodeToString(md.digest(), Base64.DEFAULT));
             }
@@ -170,5 +150,9 @@ public class FbloginActivity extends Fragment
 
         }
 
+    }
+    @Override
+    protected void onActivityResult(int reqCode, int resCode, Intent i) {
+        callbackManager.onActivityResult(reqCode, resCode, i);
     }
 }
