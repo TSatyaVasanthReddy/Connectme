@@ -7,6 +7,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
@@ -27,9 +28,12 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
@@ -114,21 +118,22 @@ public class MapsActivity extends FragmentActivity {
 
     private void setUpMap() {
         sharedpreferences= PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-        UID=sharedpreferences.getString("UID",null);
+        UID=sharedpreferences.getString("UID", null);
         name=sharedpreferences.getString("name",null);
-
+        mypos=new LatLng(0,0);
         mMap.setMyLocationEnabled(true);
         LocationManager lmanage=(LocationManager) getSystemService(Context.LOCATION_SERVICE);
         Criteria criteria = new Criteria();
         String provider = lmanage.getBestProvider(criteria, true);
-        Thread t=new Thread(new communicate("192.168.12.12",2341));
+        Log.e("Test","Test logline") ;
+        Thread t=new Thread(new communicate("172.16.11.241",8080));
         t.start();
         lmanage.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
                 // TODO Auto-generated method stub
                 mypos = new LatLng(location.getLatitude(), location.getLongitude());
-                Toast.makeText(MapsActivity.this, "Your Location changed to ("+mypos.latitude+","+mypos.longitude+")", Toast.LENGTH_LONG).show();
+               // Toast.makeText(MapsActivity.this, "Your Location changed to ("+mypos.latitude+","+mypos.longitude+")", Toast.LENGTH_LONG).show();
                 mMap.moveCamera(CameraUpdateFactory.newLatLng(mypos));
                 mMap.animateCamera(CameraUpdateFactory.zoomTo(10));
                 if(x==0){
@@ -162,7 +167,8 @@ public class MapsActivity extends FragmentActivity {
         for(String uid :servHash.keySet())
         {
             UserData ud=servHash.get(uid);
-            if(ud.isalive) {
+            if(ud.isalive)
+            {
                 LatLng pos = new LatLng(ud.lat, ud.lng);
                 MarkerOptions mop = new MarkerOptions()
                         .position(pos).title(ud.name)
@@ -200,6 +206,45 @@ public class MapsActivity extends FragmentActivity {
         }
 
     }
+
+    public static class ServData implements Serializable{
+        public ServData(HashMap<String ,UserData> x)
+        {
+            System.out.println("Created object");
+            hashlist=x;
+            unixTime = System.currentTimeMillis() / 1000L;
+        }
+        long unixTime;
+        Map<String ,UserData> hashlist;
+    }
+
+    public class UserData implements Serializable {
+
+        public UserData()
+        {
+            lat=0;
+            lng=0;
+            uid=null;
+            isalive=false;
+        }
+        public UserData(double lat , double lng , String uid , String name , long Unixtime , boolean isalive)
+        {
+            this.lat = lat;
+            this.lng = lng;
+            this.uid = uid;
+            this.name = name;
+            this.Unixtime = Unixtime;
+            this.isalive = isalive;
+        }
+
+        public double lat;
+        public double lng;
+        public String uid;
+        public String name;
+        public long Unixtime;
+        public boolean isalive;
+    }
+
     public int getColid(String x)
     {
         int sum =0 ;
@@ -229,28 +274,45 @@ public class MapsActivity extends FragmentActivity {
             Socket client = null;
             try {
                 client = new Socket(ip, port);
+                client.setKeepAlive(true);
             } catch (IOException e) {
                 e.printStackTrace();
             }
             Timer t=new Timer();
-            t.schedule(new sendmylocationtoserver(client),2000,5000);
-            while(true)
+            t.schedule(new sendmylocationtoserver(client),0,5000);
+            Looper.prepare();
+            //Toast.makeText(MapsActivity.this, "Waiting for server", Toast.LENGTH_LONG).show();
+            Log.e("msg","Waiting for server") ;
+
+            int i=10;
+            while(i-->0)
             {
                 InputStream iStream;
                 try {
-                    iStream = client.getInputStream();
+                    if(client!=null)
+                    {
+                        Log.e("Hey","Still waiting") ;
+                        Log.e("client","client ip "+client.getInetAddress().toString());
+                        iStream = client.getInputStream();
                     ObjectInputStream oiStream = new ObjectInputStream(iStream);
-                    ServData sd=(ServData)oiStream.readObject();
-                    servHash=sd.hashlist;
+
+                    servHash=(HashMap<String,UserData>)oiStream.readObject();
                     updateHash();
                     updatemarkers();
+                    System.out.println( "Got from server***************");
 
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (ClassNotFoundException e) {
-                    e.printStackTrace();
+                    Log.e("Hey","Got msg from server") ;
+                    }
+                    else
+                    {
+                        Log.e("err","failed failed");
+                    }
+
+                } catch (Exception e)
+                {
+                    Log.e("Hey","Exception found vasanth");
+                    Log.e("Exc", e.toString());
                 }
-
             }
 
         }
@@ -263,13 +325,33 @@ public class MapsActivity extends FragmentActivity {
             sock=x;
         }
         public void run() {
-            UserData ud=new UserData(mypos.latitude,mypos.longitude,name,UID,System.currentTimeMillis()/1000,true);
+            Log.e("Hey", "Entered timer task thread") ;
+            LinkedList ud=new LinkedList();
+            ud.add(name);
+            ud.add(UID);
+            ud.add(mypos.latitude);
+            ud.add(mypos.longitude);
+            ud.add(System.currentTimeMillis()/1000);
+
             OutputStream oStream;
             try {
-                oStream = sock.getOutputStream();
-                ObjectOutputStream ooStream = new ObjectOutputStream(oStream);
-                ooStream.writeObject(ud);  // send serilized payload
-                ooStream.close();
+                Log.e("Hey","preparing the outstream") ;
+                if(sock!=null) {
+                    oStream = sock.getOutputStream();
+                    ObjectOutputStream ooStream = new ObjectOutputStream(oStream);
+                    Log.e("Hey", "Writing ");
+
+                    ooStream.writeObject(ud);  // send serilized payload
+                    ooStream.flush();
+                    Log.e("Hey", "yoo done");
+
+                    //ooStream.close();
+                }
+                else
+                {
+                    Log.e("Sending", "Socket null to send");
+
+                }
 
             } catch (IOException e) {
                 e.printStackTrace();

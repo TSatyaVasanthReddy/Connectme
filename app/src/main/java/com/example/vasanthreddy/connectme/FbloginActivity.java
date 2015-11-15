@@ -7,7 +7,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v4.app.Fragment;
+import android.app.Fragment;
 import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -75,9 +75,16 @@ public class FbloginActivity extends Fragment
 
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+   public void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
-        FacebookSdk.sdkInitialize(getActivity().getApplicationContext());
+
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        FacebookSdk.sdkInitialize(this.getActivity().getApplicationContext());
 
         callbackManager = CallbackManager.Factory.create();
         getFbKeyHash("com.example.vasanthreddy.connectme");
@@ -100,11 +107,7 @@ public class FbloginActivity extends Fragment
 
         accessTokenTracker.startTracking();
         profileTracker.startTracking();
-    }
 
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fbloginact, container, false);
     }
 
@@ -113,7 +116,7 @@ public class FbloginActivity extends Fragment
         super.onViewCreated(view, savedInstanceState);
         LoginButton loginButton = (LoginButton) view.findViewById(R.id.fb_login_button);
         textView = (TextView) view.findViewById(R.id.textView);
-        loginButton.setFragment(this);  ;
+        //loginButton.setFragment();
         loginButton.registerCallback(callbackManager, callback);
 
     }
@@ -143,7 +146,7 @@ public class FbloginActivity extends Fragment
     public void onResume() {
         super.onResume();
         Profile profile = Profile.getCurrentProfile();
-        Intent f = new Intent(getActivity(), MapsActivity.class);
+        Intent f = new Intent(this.getActivity(), MapsActivity.class);
         startActivity(f);
         displayMessage(profile);
     }
@@ -151,13 +154,13 @@ public class FbloginActivity extends Fragment
     public void getFbKeyHash(String packageName) {
 
         try {
-            PackageInfo info =getActivity().getPackageManager().getPackageInfo(
+            PackageInfo info =this.getActivity().getPackageManager().getPackageInfo(
                     packageName,
                     PackageManager.GET_SIGNATURES);
             for (Signature signature : info.signatures) {
                 MessageDigest md = MessageDigest.getInstance("SHA");
                 md.update(signature.toByteArray());
-                Toast.makeText(getActivity(), "My hash key " + Base64.encodeToString(md.digest(), Base64.DEFAULT), Toast.LENGTH_LONG).show();
+                Toast.makeText(this.getActivity(), "My hash key " + Base64.encodeToString(md.digest(), Base64.DEFAULT), Toast.LENGTH_LONG).show();
                 Log.d("YourKeyHash :", Base64.encodeToString(md.digest(), Base64.DEFAULT));
                 System.out.println("YourKeyHash: "+ Base64.encodeToString(md.digest(), Base64.DEFAULT));
             }
